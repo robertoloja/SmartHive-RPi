@@ -40,17 +40,25 @@ function isOnline() {
 
 /**
  * Checks if a Google UID has already been acquired for this device.
- * @return {Boolean} true if UID already acquired, false otherwise.
- * TODO: Modify this so it checks the MongoDB.
+ * @return {Boolean} True if UID already acquired, false otherwise.
  */
 function hasUID() {
-  if (fs.existsSync('./UID')) {
-    console.log("UID already acquired.");
-    return true;
-  } else {
-    console.log("UID has to be acquired.");
-    return false;
-  }
+  var ret = true;
+  connectToMongo((db) => {
+    db.collection('uid').find().toArray((err, docs) => {
+      assert.equal(null, err);
+
+      if (docs.length == 0) {
+        ret = false;
+        console.log("No uid.");
+      } else {
+        uid = docs[0]['uid'];
+        console.log("uid =", uid);
+      }
+    });
+    db.close();
+  });
+  return ret;
 }
 
 
@@ -120,6 +128,10 @@ function getLocalSensorData(db) {
       delete docs[i]['_id']; // strip Mongo's index from the data.
     }
     console.log(docs);
+
+    // Check if latest entry in Mongo matches latest entry in Firebase
+    var firebase = connectToFirebase();
+    var ref = firebase.ref('users/' + uid + '/' + hiveNumber + '/data');
   });
 
   /*
@@ -161,4 +173,5 @@ function writeToFirebase(data, db) {
   ref.push(data);
 }
 
-connectToMongo(getLocalSensorData);
+//connectToMongo(getLocalSensorData);
+hasUID();
