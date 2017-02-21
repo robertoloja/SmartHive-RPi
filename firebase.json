@@ -2,5 +2,8 @@
   "database": {
     "rules": "database.rules.json"
   },
-  "public": "."
+  "public": "public",
+  "ignore": [
+      "firebase.json"
+  ]
 }
