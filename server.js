@@ -78,12 +78,17 @@ function startServer() {
     res.sendFile( __dirname + "/index.html" );
   });
 
-  if (!hasUID()) {
-    // accept UID from web client, via POST, after Google authentication.
-    app.post('/token', function(req, res){
-      uid = req.body.uid;
-    });
-  }
+  // accept UID from web client, via POST, after Google authentication.
+  app.post('/token', (req, res) => {
+    uid = req.body.uid;
+
+    if (!hasUID()) {
+      connectToMongo((db) => {
+        db.collection('uid').insert({"uid": uid});
+        db.close();
+      });
+    }
+  });
 
   var server = app.listen(3000, function () {
     var host = server.address().address
@@ -173,5 +178,4 @@ function writeToFirebase(data, db) {
   ref.push(data);
 }
 
-//connectToMongo(getLocalSensorData);
-hasUID();
+startServer();
