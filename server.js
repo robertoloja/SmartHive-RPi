@@ -1,18 +1,17 @@
-// TODO: The user only needs to login to google ONCE, then we can save
-//       their UID and just use the service account to access the database.
-// TODO: After Google login, check how many other hives the user has in the
-//       database and number this hive accordingly.
 // TODO: When transfering data from Mongo to Firebase, continuously check
 //       older Mongo records until finding one that matches the lattest 
 //       Firebase record. Then, all of the Mongo records since the match
 //       should be uploaded.
+
 // TODO: Finally, the web client can be much improved.
+
 var express = require('express');
 var firebase = require('firebase');
 var admin = require('firebase-admin');
 var bodyParser = require('body-parser');
 var MongoClient = require('mongodb').MongoClient
 var assert = require('assert');
+var opn = require('opn');
 var fs = require('fs');
 
 var serviceAccount = require("./sh.json"); // Downloaded from firebase console
@@ -39,30 +38,6 @@ function isOnline() {
 
 
 /**
- * Checks if a Google UID has already been acquired for this device.
- * @return {Boolean} True if UID already acquired, false otherwise.
- */
-function hasUID() {
-  var ret = true;
-  connectToMongo((db) => {
-    db.collection('uid').find().toArray((err, docs) => {
-      assert.equal(null, err);
-
-      if (docs.length == 0) {
-        ret = false;
-        console.log("No uid.");
-      } else {
-        uid = docs[0]['uid'];
-        console.log("uid =", uid);
-      }
-    });
-    db.close();
-  });
-  return ret;
-}
-
-
-/**
  * Request that user login and authenticate with google.
  * TODO: Serve the actual full web app. Currently this just serves and handles
  *       the Google log in page.
@@ -81,19 +56,29 @@ function startServer() {
   // accept UID from web client, via POST, after Google authentication.
   app.post('/token', (req, res) => {
     uid = req.body.uid;
+    var name = req.body.name;
+    console.log("Received POST request.");
 
-    if (!hasUID()) {
-      connectToMongo((db) => {
-        db.collection('uid').insert({"uid": uid});
+    // check if there is already a UID in MongoDB
+    connectToMongo((db) => {
+      db.collection('hiveInfo').find().toArray((err, docs) => {
+        assert.equal(null, err);
+
+        if (docs.length == 0) { // no UID in MongoDB; insert it.
+          db.collection('hiveInfo').insert({"uid": uid, "name": name});
+        } else {
+          console.log("uid =", uid);
+        }
         db.close();
       });
-    }
+    });
   });
 
   var server = app.listen(3000, function () {
     var host = server.address().address
     var port = server.address().port
     
+    opn('http://localhost:3000');
     console.log("SmartHive login server listening on port", port)
   });
 }
