@@ -1,9 +1,4 @@
-// TODO: When transfering data from Mongo to Firebase, continuously check
-//       older Mongo records until finding one that matches the lattest 
-//       Firebase record. Then, all of the Mongo records since the match
-//       should be uploaded.
-
-// TODO: Finally, the web client can be much improved.
+// TODO: Web client needs to ask for Hive name.
 
 var express = require('express');
 var firebase = require('firebase');
@@ -15,15 +10,173 @@ var opn = require('opn');
 var fs = require('fs');
 
 var serviceAccount = require("./sh.json"); // Downloaded from firebase console
-
+var url = 'mongodb://localhost:27017/sensorData'; // MongoDB URL
+var firebaseDB;
 var app;
-var uid;
+
+
+// Express server.
+app = express();
+app.use(express.static('public'));
+app.use(bodyParser.urlencoded({extended: false}));
+app.use(bodyParser.json());
+
+// Serve index page of web client for authentication.
+app.get('/', function (req, res) {
+  res.sendFile( __dirname + "/index.html" );
+});
+
+// Serve wifi instructions
+app.get('/wifi.html', function (req, res) {
+  res.sendFile( __dirname + "/wifi.html" );
+});
+
+var server = app.listen(3000, function () {
+  var host = server.address().address
+  var port = server.address().port
+  console.log("SmartHive login server listening on port", port)
+});
 
 
 /**
- * Check internet connection.
- * @return {Boolean} true if connected, false otherwise.
+  * hiveInfo is a Promise that will contain UID, HID and hiveName.
+  * It MUST be used by invoking its then() method, which receives a 
+  * callback that has one parameter, in this case an object containing hive 
+  * info (uid, hid, hiveName). Anything needing these values HAS to be done 
+  * from within that callback, or risk them being undefined.
+  */
+var hiveInfo = new Promise((resolve, reject) => {
+  MongoClient.connect(url, (err, mongoDB) => {
+    console.log(err);
+    assert.equal(null, err);
+    // get UID from MongoDB, if it exists.
+    mongoDB.collection('hiveInfo').find({'uid': /./}).toArray((err, docs) => {
+      assert.equal(null, err);
+
+      // This just makes 'docs' easier to deal with.
+      if (docs.length == 0)
+        docs = {};
+      else
+        docs = docs[0];
+
+      /**
+      * Setup POST receiver, to accept Google UID once user logs in.
+      * This has to be a Promise, so it can be resolved when UID is
+      * actually needed.
+      */
+      var uidPromise = new Promise((resolve, reject) => {
+        if (docs['uid'] != undefined)
+          resolve(docs['uid']);
+
+        app.post('/token', (req, res) => {
+          var uid_and_name = {
+            'uid': req.body.uid,
+            'name': req.body.name
+          };
+          resolve(uid_and_name);
+        });
+      });
+
+
+      if (docs['uid'] == undefined) { // UID not in MongoDB
+        opn('http://localhost:3000'); // open browser
+
+        uidPromise.then((uid) => { // resolved once user logs in
+          docs['uid'] = uid['uid'];
+          docs['name'] = uid['name'];
+
+          connectToFirebase(uid['uid']);
+
+          var hive = {
+            'name': uid['name'],
+            'date_created': Math.round(Date.now() / 1000), // seconds
+            'location': '0.0, 0.0'
+          };
+
+          var ref = firebaseDB.ref('users/' + uid['uid']);
+
+          docs['hid'] = ref.push(hive).key; // This key is the HID.
+
+          mongoDB.collection('hiveInfo').insert({ // update MongoDB.
+                          'uid': docs['uid'],
+                          'name': docs['name'],
+                          'hid': docs['hid']
+          });
+          delete docs['_id'];
+          resolve(docs);
+        });
+      } else {
+        delete docs['_id'];
+        resolve(docs);
+      }
+    });
+    mongoDB.close();
+  });
+});
+
+// This actually cashes out the Promise.
+hiveInfo.then((info) => {
+    console.log('Using UID =', info['uid'], ', HID =', info['hid']);
+});
+
+getLocalSensorData();
+
+/**
+* Read data from the MongoDB instance and write any unwritten data to Firebase.
+*/
+function getLocalSensorData() {
+  MongoClient.connect(url, (err, mongoDB) => {
+    assert.equal(null, err);
+    var data = mongoDB.collection('data');
+
+    data.find({'uploaded': false}).toArray((err, docs) => {
+      assert.equal(null, err);
+
+      hiveInfo.then((info) => {
+        var ref = firebaseDB.ref('users/' + info['uid'] +
+                                 '/' + info['hid'] + '/data');
+
+        for (var i = 0; i < docs.length; i++) {
+          delete docs[i]['_id']; // strip Mongo's index from the data.
+          delete docs[i]['uploaded']; // strip uploaded field.
+
+          ref.push(docs[i]);
+
+          data.updateOne({'date': docs[i]['date']},
+                        {$set: {'uploaded': true}},
+                        (err, r) => {
+            assert.equal(null, err);
+            assert.equal(1, r.matchedCount);
+            assert.equal(1, r.modifiedCount);
+          });
+        }
+      });
+    });
+  });
+}
+
+
+/**
+ * Establish user-limited connection to Firebase. Can only
+ * be done once UID has been acquired.
+ * @param {String} userID The Google account's Firebase UID.
  */
+function connectToFirebase(userID) {
+  admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount),
+    databaseURL: "https://smarthive-229a5.firebaseio.com",
+    databaseAuthVariableOverride: {
+      uid: userID
+    }
+  });
+  firebaseDB = admin.database();
+}
+
+
+/**
+* Check internet connection.
+* @return {Boolean} true if connected, false otherwise.
+*/
 function isOnline() {
   require('dns').resolve('www.google.com', (err) => {
     if (err) {
@@ -33,134 +186,5 @@ function isOnline() {
       console.log("Connection acquired.");
       return false;
     }
-  })
-}
-
-
-/**
- * Request that user login and authenticate with google.
- * TODO: Serve the actual full web app. Currently this just serves and handles
- *       the Google log in page.
- */
-function startServer() {
-  app = express();
-  app.use(express.static('public'));
-  app.use(bodyParser.urlencoded({extended: false}));
-  app.use(bodyParser.json());
-
-  // Serve index page of web client for authentication.
-  app.get('/', function (req, res) {
-    res.sendFile( __dirname + "/index.html" );
-  });
-
-  // accept UID from web client, via POST, after Google authentication.
-  app.post('/token', (req, res) => {
-    uid = req.body.uid;
-    var name = req.body.name;
-    console.log("Received POST request.");
-
-    // check if there is already a UID in MongoDB
-    connectToMongo((db) => {
-      db.collection('hiveInfo').find().toArray((err, docs) => {
-        assert.equal(null, err);
-
-        if (docs.length == 0) { // no UID in MongoDB; insert it.
-          db.collection('hiveInfo').insert({"uid": uid, "name": name});
-        } else {
-          console.log("uid =", uid);
-        }
-        db.close();
-      });
-    });
-  });
-
-  var server = app.listen(3000, function () {
-    var host = server.address().address
-    var port = server.address().port
-    
-    opn('http://localhost:3000');
-    console.log("SmartHive login server listening on port", port)
   });
 }
-
-
-/**
- * Connects to local MongoDB instance, then executes the given callback with
- * a connected instance of the database.
- * @param {Function} callback The function to execute once the db instance has
- * been acquired. It must accept the connected db param.
- */
-function connectToMongo(callback) {
-  var url = 'mongodb://localhost:27017/sensorData';
-
-  MongoClient.connect(url, (err, db) => { // on success, db is connected object
-    assert.equal(null, err); // If err != null, assert fails, function quits.
-    console.log("Connected to MongoDB");
-
-    callback(db);
-  });
-}
-
-
-/**
- * Read data from the MongoDB instance. Actually, because of Node's async, this
- * function has to both fetch the data from the MongoDB instance, then, in a
- * callback, call writeToFirebase() to send Firebase the data.
- * @param {MongoDB} db Connected database instance.
- */
-function getLocalSensorData(db) {
-  var data = db.collection('data');
-
-  data.find().sort({"date": -1}).limit(3).toArray((err, docs) => {
-    assert.equal(null, err);
-
-    for (var i = 0; i < docs.length; i++) {
-      delete docs[i]['_id']; // strip Mongo's index from the data.
-    }
-    console.log(docs);
-
-    // Check if latest entry in Mongo matches latest entry in Firebase
-    var firebase = connectToFirebase();
-    var ref = firebase.ref('users/' + uid + '/' + hiveNumber + '/data');
-  });
-
-  /*
-  data.find({}).toArray((err, docs) => { // transform Cursor into array
-    assert.equal(null, err); // check for errors, always, as is the Node way
-
-
-    console.log(docs);
-    //writeToFirebase(docs); // This HAS to happen here, in the callback.
-    db.close();
-  }); 
-  */
- db.close();
-}
-
-
-function connectToFirebase() {
-  // Connect to Firebase using service account, emulating user of UID.
-  admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
-    databaseURL: "https://smarthive-229a5.firebaseio.com",
-    databaseAuthVariableOverride: {
-      uid: uid
-    }
-  });
-  console.log("Authenticated on firebase as UID=" + uid);
-
-  return admin.database();
-}
-
-/**
- * Write data to remote Firebase instance.
- * @param {JSON} data The data to write.
- * @param {Firebase} db Connected Firebase instance (e.g. returned from
- *                      connectToFirebase().
- */
-function writeToFirebase(data, db) {
-  var ref = db.ref('users/' + uid); // This is the wrong spot to upload this to
-  ref.push(data);
-}
-
-startServer();
