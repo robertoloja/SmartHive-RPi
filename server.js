@@ -91,13 +91,12 @@ var hiveInfo = new Promise((resolve, reject) => {
             'location': '0.0, 0.0'
           };
 
+          connectToFirebase(docs['uid']);
           var ref = firebaseDB.ref('users/' + uid['uid']);
-
           docs['hid'] = ref.push(hive).key; // This key is the HID.
 
           delete docs['_id'];
           mongoDB.collection('hiveInfo').insert(docs);
-          connectToFirebase(docs['uid']);
           resolve(docs);
         });
       } else {
@@ -106,7 +105,6 @@ var hiveInfo = new Promise((resolve, reject) => {
         resolve(docs);
       }
     });
-    mongoDB.close();
   });
 });
 
@@ -188,4 +186,4 @@ function isOnline() {
   });
 }
 
-setInterval(getLocalSensorData, 10000);
+setInterval(getLocalSensorData, 1000);
