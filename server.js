@@ -132,7 +132,11 @@ function getLocalSensorData() {
     data.find({'uploaded': false}).toArray((err, docs) => {
       assert.equal(null, err);
 
+      if (docs.length == 0)
+        return;
+
       hiveInfo.then((info) => {
+        connectToFirebase(info['uid']);
         var ref = firebaseDB.ref('users/' + info['uid'] +
                                  '/' + info['hid'] + '/data');
 
