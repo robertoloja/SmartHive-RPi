@@ -85,8 +85,6 @@ var hiveInfo = new Promise((resolve, reject) => {
           docs['uid'] = uid['uid'];
           docs['name'] = uid['name'];
 
-          connectToFirebase(uid['uid']);
-
           var hive = {
             'name': uid['name'],
             'date_created': Math.round(Date.now() / 1000), // seconds
@@ -99,10 +97,12 @@ var hiveInfo = new Promise((resolve, reject) => {
 
           delete docs['_id'];
           mongoDB.collection('hiveInfo').insert(docs);
+          connectToFirebase(docs['uid']);
           resolve(docs);
         });
       } else {
         delete docs['_id'];
+        connectToFirebase(docs['uid']);
         resolve(docs);
       }
     });
@@ -115,7 +115,6 @@ hiveInfo.then((info) => {
     console.log('Using UID =', info['uid'], ', HID =', info['hid']);
 });
 
-getLocalSensorData();
 
 /**
 * Read data from the MongoDB instance and write any unwritten data to Firebase.
@@ -132,7 +131,7 @@ function getLocalSensorData() {
         return;
 
       hiveInfo.then((info) => {
-        connectToFirebase(info['uid']);
+        //connectToFirebase(info['uid']);
         var ref = firebaseDB.ref('users/' + info['uid'] +
                                  '/' + info['hid'] + '/data');
 
@@ -188,3 +187,5 @@ function isOnline() {
     }
   });
 }
+
+setInterval(getLocalSensorData, 10000);
