@@ -47,8 +47,8 @@ var server = app.listen(3000, function () {
   */
 var hiveInfo = new Promise((resolve, reject) => {
   MongoClient.connect(url, (err, mongoDB) => {
-    console.log(err);
     assert.equal(null, err);
+
     // get UID from MongoDB, if it exists.
     mongoDB.collection('hiveInfo').find({'uid': /./}).toArray((err, docs) => {
       assert.equal(null, err);
@@ -97,12 +97,8 @@ var hiveInfo = new Promise((resolve, reject) => {
 
           docs['hid'] = ref.push(hive).key; // This key is the HID.
 
-          mongoDB.collection('hiveInfo').insert({ // update MongoDB.
-                          'uid': docs['uid'],
-                          'name': docs['name'],
-                          'hid': docs['hid']
-          });
           delete docs['_id'];
+          mongoDB.collection('hiveInfo').insert(docs);
           resolve(docs);
         });
       } else {
