@@ -31,7 +31,7 @@ app.get('/viz', function (req, res) {
 });
 
 // Serve wifi instructions
-app.get('/wifi.html', function (req, res) {
+app.get('/wifi', function (req, res) {
   res.sendFile( __dirname + "/wifi.html" );
 });
 
@@ -49,22 +49,22 @@ var server = app.listen(3000, function () {
 /**
  * Fingers crossed?
  */
-function connectToMongo(r) {
+function connectToMongo(r) { // WHAT IS HAPPENING IN THIS FUNCTION?!?
   MongoClient.connect(url, (err, mongoDB) => {
     if (err) {
-      console.log("Error:", err);
-      return;
-    }
-    mongoDB.collection('data')
+      console.log("Meep?:", err);
+    } else if (mongoDB) {
+      mongoDB.collection('data')
            .find()
            .toArray( // docs is the array
       (err, docs) => {
-      if (err) {
-        console.log("Collection Error:", err);
-      } else {
-        r.json(docs);
-      }
-    });
+        if (err) {
+          console.log("Collection Error:", err);
+        } else {
+          r.json(docs);
+        }
+      });
+    }
   }); // connection to mongo ended
 }
 

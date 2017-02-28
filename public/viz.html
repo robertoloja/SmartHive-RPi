@@ -8,6 +8,7 @@
         <script src="https://www.gstatic.com/firebasejs/3.6.9/firebase.js"></script>
 	</HEAD>
 	<BODY>
+        <div id="chart" class="svg-container"></div>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/4.2.3/d3.min.js"></script>
         <script>
 
@@ -21,15 +22,30 @@
       data[i]['date'] = data[i]['date'];
     }
 
+/*
+    xE = d3.extent(data, (d) => new Date(d.date * 1000));
+    yE = d3.extent(data, (d) => d.weight);
+    x = d3.timeScale().domain(xE);
+    y = d3.scaleLinear().domain(yE);
+    xAxis = d3.svg.axis().orient('bottom');
+    yAxis = d3.svg.axis().orient('left');
+    */
+
     // Dataviz
-    var w = window.innerWidth - 20; // Put listeners on these, to change
-    var h = window.innerHeight - 20; // reactively?
     var barSpacing = 5;
 
-    var svg = d3.select("body")
+    var chartDiv = document.getElementById("chart");
+    var maxWidth = window.innerWidth - 20;
+    var maxHeight = window.innerHeight - 20;
+
+    var w = window.innerWidth - 20;
+    var h = window.innerHeight - 20;
+
+    var svg = d3.select(chartDiv)
                 .append("svg")
-                .attr("width", w)
-                .attr("height", h);
+                .attr('width', w)
+                .attr('height', h);
+                
 
     var rects = svg.selectAll("rect")
                    .data(data)
@@ -47,18 +63,70 @@
         .attr("fill", "black")
         .text((d) => d.weight);
 
-    function render(color) {
-        rects.append("rect")
-             .attr("class", "bar")
-             .attr("width", (w / data.length) - barSpacing)
-             .attr("height", (d) => d.weight)
-             .attr("x", (d, i) => i * (w / data.length))
-             .attr("y", (d) => h - d.weight) // flip bars right side up
-             .attr("fill", "teal")
-             .attr("stroke", "black");
 
+    function render(color) {
+
+        rects.append("rect")
+          .attr("class", "bar")
+          .attr("width", (w / data.length) - barSpacing)
+          .attr("height", (d) => d.weight)
+          .attr("x", (d, i) => i * (w / data.length))
+          .attr("y", (d) => h - d.weight) // flip bars right side up
+          .attr("fill", "teal")
+          .attr("stroke", "black");
     }
-    render(data, "red");
+render();
+
+function reRender() {
+        svg.remove();
+        w = window.innerWidth - 20;
+        h = window.innerHeight - 20;
+
+        svg = d3.select(chartDiv)
+                .append("svg")
+                .attr('width', w)
+                .attr('height', h);
+
+        rects = svg.selectAll("rect")
+                   .data(data)
+                   .enter();
+
+        rects.append("rect")
+          .attr("class", "bar")
+          .attr("width", (w / data.length) - barSpacing)
+          .attr("height", (d) => d.weight)
+          .attr("x", (d, i) => i * (w / data.length))
+          .attr("y", (d) => h - d.weight) // flip bars right side up
+          .attr("fill", "teal")
+          .attr("stroke", "black");
+
+        text = svg.selectAll("text")
+                  .data(data)
+                  .enter()
+                  .append("text");
+
+        text.attr("x", (d, i) => i * (w / data.length))
+            .attr("y", (d) => h - d.weight - 2)
+            .attr("font-family", "sans-serif")
+            .attr("font-size", "11px")
+            .attr("fill", "black")
+            .text((d) => d.weight);
+}
+/*
+    function resize() {
+        w = window.innerWidth;
+        h = window.innerHeight;
+
+        svg.attr("width", w)
+           .attr("height", h);
+        render(data, "red");
+    }
+    resize();
+    */
+
+    //window.onresize = reRender;
+    window.addEventListener("resize", reRender);
+    //d3.select(window).on('resize', reRender);
         </script>
 	</BODY>
 </HTML>
