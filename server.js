@@ -26,10 +26,18 @@ app.get('/', function (req, res) {
   res.sendFile( __dirname + "/index.html" );
 });
 
+app.get('/viz', function (req, res) {
+  res.sendFile( __dirname + "/public/viz.html" );
+});
+
 // Serve wifi instructions
 app.get('/wifi.html', function (req, res) {
   res.sendFile( __dirname + "/wifi.html" );
 });
+
+app.get("/data",function(req,res){
+  connectToMongo(res);
+}); 
 
 var server = app.listen(3000, function () {
   var host = server.address().address
@@ -39,11 +47,37 @@ var server = app.listen(3000, function () {
 
 
 /**
+ * Fingers crossed?
+ */
+function connectToMongo(r) {
+  MongoClient.connect(url, (err, mongoDB) => {
+    if (err) {
+      console.log("Error:", err);
+      return;
+    }
+    mongoDB.collection('data')
+           .find()
+           .toArray( // docs is the array
+      (err, docs) => {
+      if (err) {
+        console.log("Collection Error:", err);
+      } else {
+        r.json(docs);
+      }
+    });
+  }); // connection to mongo ended
+}
+
+
+/**
   * hiveInfo is a Promise that will contain UID, HID and hiveName.
   * It MUST be used by invoking its then() method, which receives a 
   * callback that has one parameter, in this case an object containing hive 
   * info (uid, hid, hiveName). Anything needing these values HAS to be done 
   * from within that callback, or risk them being undefined.
+  *
+  * TODO: By the love of God, break this monstrosity up into... modules? 
+  *       ...functions? Something smaller and more reusable.
   */
 var hiveInfo = new Promise((resolve, reject) => {
   MongoClient.connect(url, (err, mongoDB) => {
@@ -68,7 +102,7 @@ var hiveInfo = new Promise((resolve, reject) => {
         if (docs['uid'] != undefined)
           resolve(docs['uid']);
 
-        app.post('/token', (req, res) => {
+        app.post('/info', (req, res) => {
           var uid_and_name = {
             'uid': req.body.uid,
             'name': req.body.name
@@ -119,7 +153,9 @@ hiveInfo.then((info) => {
 */
 function getLocalSensorData() {
   MongoClient.connect(url, (err, mongoDB) => {
-    assert.equal(null, err);
+    if (err != null)
+      return;
+
     var data = mongoDB.collection('data');
 
     data.find({'uploaded': false}).toArray((err, docs) => {

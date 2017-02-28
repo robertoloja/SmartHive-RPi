@@ -1,6 +1,10 @@
 <head>
     <script src="https://apis.google.com/js/platform.js" async defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/4.2.3/d3.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/3.6.9/firebase.js"></script>
+    <script src="https://cdn.firebase.com/libs/firebaseui/1.0.0/firebaseui.js"></script>
+    <link type="text/css" rel="stylesheet" href="https://cdn.firebase.com/libs/firebaseui/1.0.0/firebaseui.css" /> 
+
     <script>
       // Initialize Firebase
       var config = {
@@ -57,12 +61,10 @@
         if (result.credential) {
           // This gives you a Google Access Token. You can use it to access the Google API.
           var token = result.credential.accessToken;
-
+          console.log("OAuth token:", token);
 
           // [START_EXCLUDE]
-          document.getElementById('quickstart-oauthtoken').textContent = token;
         } else {
-          document.getElementById('quickstart-oauthtoken').textContent = 'null';
           // [END_EXCLUDE]
         }
         // The signed-in user info.
@@ -98,20 +100,19 @@
           var isAnonymous = user.isAnonymous;
           var uid = user.uid;
           var providerData = user.providerData;
+          console.log("Signed in as", uid);
           // [START_EXCLUDE]
-          document.getElementById('quickstart-sign-in-status').textContent = 'Signed in';
           document.getElementById('quickstart-sign-in').textContent = 'Sign out';
-          document.getElementById('quickstart-account-details').textContent = JSON.stringify(user, null, '  ');
+          document.getElementById('MainText').textContent = "You're ready to go!";
+          //document.getElementById('quickstart-account-details').textContent = JSON.stringify(user, null, '  ');
 
-
-
-
-          // HERE IS THE OAUTH TOKEN !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-          // POST the OAauth token to the Express server
-          var request = new XMLHttpRequest();
-          request.open("POST", "/token", true);
-          request.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
-          request.send("uid=" + user.uid + "&name=My Hive");
+        /**
+        * Send the UID and hive name to server, via POST
+        */
+        var request = new XMLHttpRequest();
+        request.open("POST", "/info", true);
+        request.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+        request.send("uid=" + user.uid + "&name=My Hive");
 
 
 
@@ -120,10 +121,11 @@
         } else {
           // User is signed out.
           // [START_EXCLUDE]
+          document.getElementById('MainText').textContent = "Please sign in to Google Firebase to use the SmartHive Raspberry Pi app.";
           document.getElementById('quickstart-sign-in-status').textContent = 'Signed out';
           document.getElementById('quickstart-sign-in').textContent = 'Sign in with Google';
-          document.getElementById('quickstart-account-details').textContent = 'null';
-          document.getElementById('quickstart-oauthtoken').textContent = 'null';
+          //document.getElementById('quickstart-account-details').textContent = 'null';
+          //document.getElementById('quickstart-oauthtoken').textContent = 'null';
           // [END_EXCLUDE]
         }
         // [START_EXCLUDE]
@@ -136,31 +138,31 @@
     window.onload = function() {
       initApp();
     };
-  </script>
+      
+    </script>
+
 
 
   <main class="mdl-layout__content mdl-color--grey-100">
     <div class="mdl-cell mdl-cell--12-col mdl-cell--12-col-tablet mdl-grid">
 
       <!-- Container for the demo -->
+      <center>
       <div class="mdl-card mdl-shadow--2dp mdl-cell mdl-cell--12-col mdl-cell--12-col-tablet mdl-cell--12-col-desktop">
-        <div class="mdl-card__title mdl-color--light-blue-600 mdl-color-text--white">
-          <h2 class="mdl-card__title-text">Google Authentication with Redirect</h2>
-        </div>
         <div class="mdl-card__supporting-text mdl-color-text--grey-600">
-          <p>Sign in with your Google account below.</p>
+          <p id="MainText" style="font-size: 2em; line-height: 1.1em;">Please sign in to Google Firebase to
+            use the SmartHive Raspberry Pi app.</p>
 
           <!-- Button that handles sign-in/sign-out -->
-          <button disabled class="mdl-button mdl-js-button mdl-button--raised" id="quickstart-sign-in">Sign in with Google</button>
+          <button disabled class="mdl-button mdl-js-button mdl-button--raised" id="quickstart-sign-in" style="margin: auto; font-size: 1.2em; line-height: 1.1em;"> Sign in with Google</button>
 
-          <!-- Container where we'll display the user details -->
-          <div class="quickstart-user-details-container">
-            Firebase sign-in status: <span id="quickstart-sign-in-status">Unknown</span>
-            <div>Firebase auth <code>currentUser</code> object value:</div>
-            <pre><code id="quickstart-account-details">null</code></pre>
-            <div>Google OAuth Access Token:</div>
-            <pre><code id="quickstart-oauthtoken">null</code></pre>
+          <br>
+          <br>
+          <div class="quickstart-user-details-container" style="font-size: 1.2em;">
+            <span id="quickstart-sign-in-status"></span>
+          <br><br>
           </div>
+          </center>
         </div>
       </div>
     </div>

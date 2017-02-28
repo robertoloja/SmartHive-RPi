@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+
+<HTML>
+	<HEAD>
+		<TITLE></TITLE>
+		<LINK REL='stylesheet' TYPE='text/css' HREF=''>
+        <script src="https://apis.google.com/js/platform.js" async defer></script>
+        <script src="https://www.gstatic.com/firebasejs/3.6.9/firebase.js"></script>
+	</HEAD>
+	<BODY>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/4.2.3/d3.min.js"></script>
+        <script>
+
+    var request = new XMLHttpRequest();
+    request.open("GET", "http://localhost:3000/data", false);
+    request.send(null);
+    var data = JSON.parse(request.responseText);
+
+    for (var i = 0; i < data.length; i++) {
+      delete data[i]['_id'];
+      data[i]['date'] = data[i]['date'];
+    }
+
+    // Dataviz
+    var w = window.innerWidth - 20; // Put listeners on these, to change
+    var h = window.innerHeight - 20; // reactively?
+    var barSpacing = 5;
+
+    var svg = d3.select("body")
+                .append("svg")
+                .attr("width", w)
+                .attr("height", h);
+
+    var rects = svg.selectAll("rect")
+                   .data(data)
+                   .enter();
+
+    var text = svg.selectAll("text")
+                  .data(data)
+                  .enter()
+                  .append("text");
+
+    text.attr("x", (d, i) => i * (w / data.length))
+        .attr("y", (d) => h - d.weight - 2)
+        .attr("font-family", "sans-serif")
+        .attr("font-size", "11px")
+        .attr("fill", "black")
+        .text((d) => d.weight);
+
+    function render(color) {
+        rects.append("rect")
+             .attr("class", "bar")
+             .attr("width", (w / data.length) - barSpacing)
+             .attr("height", (d) => d.weight)
+             .attr("x", (d, i) => i * (w / data.length))
+             .attr("y", (d) => h - d.weight) // flip bars right side up
+             .attr("fill", "teal")
+             .attr("stroke", "black");
+
+    }
+    render(data, "red");
+        </script>
+	</BODY>
+</HTML>

@@ -2,9 +2,9 @@
   "name": "smarthive_rpi",
   "version": "1.0.0",
   "eslintConfig": {
-      "ecmaFeatures": {
-          "arrowFunctions":true
-      }
+    "ecmaFeatures": {
+      "arrowFunctions": true
+    }
   },
   "description": "The Raspberry Pi software components of the SmartHive project.",
   "main": "server.js",
@@ -19,6 +19,7 @@
     "express": "^4.14.1",
     "firebase": "^3.6.9",
     "firebase-admin": "^4.1.1",
+    "firebaseui": "^1.0.0",
     "mongodb": "^2.2.24",
     "opn": "^4.0.2"
   }
