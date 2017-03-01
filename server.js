@@ -73,6 +73,7 @@ function connectToMongo(r) { // WHAT IS HAPPENING IN THIS FUNCTION?!?
         }
       });
     }
+    mongoDB.close();
   }); // connection to mongo ended
 }
 
