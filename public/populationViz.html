@@ -11,134 +11,79 @@
         <div id="chart" class="svg-container"></div>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/4.2.3/d3.min.js"></script>
         <script>
+    var data;
 
+    // Async GET request for data.
     var request = new XMLHttpRequest();
-    request.open("GET", "http://localhost:3000/data", false);
-    request.send(null);
-    var data = JSON.parse(request.responseText);
+    request.open("GET", "http://localhost:3000/data", true);
+    request.onload = () => {
+        data = JSON.parse(request.responseText);
 
-    for (var i = 0; i < data.length; i++) {
-      delete data[i]['_id'];
-      data[i]['date'] = data[i]['date'];
+        for (var i = 0; i < data.length; i++) {
+          delete data[i]['_id'];
+          data[i]['date'] = data[i]['date'];
+        }
+        render();
     }
-
-/*
-    xE = d3.extent(data, (d) => new Date(d.date * 1000));
-    yE = d3.extent(data, (d) => d.population);
-    x = d3.timeScale().domain(xE);
-    y = d3.scaleLinear().domain(yE);
-    xAxis = d3.svg.axis().orient('bottom');
-    yAxis = d3.svg.axis().orient('left');
-    */
+    request.send(null);
 
     // Dataviz
-    var barSpacing = 5;
-
-    var chartDiv = document.getElementById("chart");
-    var maxWidth = window.innerWidth - 20;
-    var maxHeight = window.innerHeight - 20;
-
     var w = window.innerWidth - 20;
     var h = window.innerHeight - 20;
+    var barSpacing = 2;
+    var chartDiv = document.getElementById("chart");
 
-    var svg = d3.select(chartDiv)
-                .append("svg")
-                .attr('width', w)
-                .attr('height', h);
+function render() {
+    w = window.innerWidth;
+    h = window.innerHeight;
 
-    var g = svg.append("g")
-               .attr("transform", "translate(" + 20 + "," + 20 + ")");
-                
-    var x = d3.scaleTime().rangeRound([0, w]);
-    var y = d3.scaleLinear().rangeRound([h, 0]);
+    var xScale = d3.scaleLinear()
+                   .domain([0, data.length])
+                   .range([0, w])
 
-    var line = d3.line()
-                 .x((d) => x(d.date))
-                 .y((d) => y(d.population))
+    var yScale = d3.scaleLinear()
+                   .domain(d3.extent(data, (d) => d.population))
+                   .range([h - 60, 20])
 
-    x.domain(d3.extent(data, (d) => d.date));
-    y.domain(d3.extent(data, (d) => d.population));
+    svg = d3.select(chartDiv)
+            .append("svg")
+            .attr('width', w - 10)
+            .attr('height', h - 40);
 
-    var rects = svg.selectAll("rect")
-                   .data(data)
-                   .enter();
+    rects = svg.selectAll("rect")
+               .data(data)
+               .enter();
 
-    var text = svg.selectAll("text")
-                  .data(data)
-                  .enter()
-                  .append("text");
+    var barWidth = w / data.length - barSpacing * 2;
 
-    text.attr("x", (d, i) => i * (w / data.length))
-        .attr("y", (d) => h - d.population - 2)
+    rects.append("rect")
+         .attr("class", "bar")
+         .attr("width", barWidth)
+         .attr("height", (d) => h - yScale(d.population))
+         .attr("x", (d, i) => i * (barWidth + barSpacing))
+         .attr("y", (d) => yScale(d.population)) // flip bars right side up
+         .attr("fill", "teal")
+         .attr("stroke", "black");
+
+    text = svg.selectAll("text")
+              .data(data)
+              .enter()
+              .append("text");
+
+    text.attr("x", (d, i) => i * (barWidth + barSpacing))
+        .attr("y", (d) => yScale(d.population) - 2)
         .attr("font-family", "sans-serif")
         .attr("font-size", "11px")
         .attr("fill", "black")
         .text((d) => d.population);
-
-
-    function render(color) {
-
-        rects.append("rect")
-          .attr("class", "bar")
-          .attr("width", (w / data.length) - barSpacing)
-          .attr("height", (d) => d.population)
-          .attr("x", (d, i) => i * (w / data.length))
-          .attr("y", (d) => h - d.population) // flip bars right side up
-          .attr("fill", "teal")
-          .attr("stroke", "black");
-    }
-render();
+}
 
 function reRender() {
         svg.remove();
-        w = window.innerWidth - 20;
-        h = window.innerHeight - 20;
-
-        svg = d3.select(chartDiv)
-                .append("svg")
-                .attr('width', w)
-                .attr('height', h);
-
-        rects = svg.selectAll("rect")
-                   .data(data)
-                   .enter();
-
-        rects.append("rect")
-          .attr("class", "bar")
-          .attr("width", (w / data.length) - barSpacing)
-          .attr("height", (d) => d.population)
-          .attr("x", (d, i) => i * (w / data.length))
-          .attr("y", (d) => h - d.population) // flip bars right side up
-          .attr("fill", "teal")
-          .attr("stroke", "black");
-
-        text = svg.selectAll("text")
-                  .data(data)
-                  .enter()
-                  .append("text");
-
-        text.attr("x", (d, i) => i * (w / data.length))
-            .attr("y", (d) => h - d.population - 2)
-            .attr("font-family", "sans-serif")
-            .attr("font-size", "11px")
-            .attr("fill", "black")
-            .text((d) => d.population);
+        render();
 }
-/*
-    function resize() {
-        w = window.innerWidth;
-        h = window.innerHeight;
 
-        svg.attr("width", w)
-           .attr("height", h);
-        render(data, "red");
-    }
-    resize();
-    */
-
-    //window.onresize = reRender;
-    window.addEventListener("resize", reRender);
-    //d3.select(window).on('resize', reRender);
+window.onresize = reRender;
         </script>
 	</BODY>
 </HTML>

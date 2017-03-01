@@ -71,9 +71,9 @@ function connectToMongo(r) { // WHAT IS HAPPENING IN THIS FUNCTION?!?
         } else {
           r.json(docs);
         }
+      mongoDB.close();
       });
     }
-    mongoDB.close();
   }); // connection to mongo ended
 }
 
@@ -179,18 +179,19 @@ function getLocalSensorData() {
                                  '/' + info['hid'] + '/data');
 
         for (var i = 0; i < docs.length; i++) {
-          delete docs[i]['_id']; // strip Mongo's index from the data.
-          delete docs[i]['uploaded']; // strip uploaded field.
-
-          ref.push(docs[i]);
-
-          data.updateOne({'date': docs[i]['date']},
+          data.updateOne({'_id': docs[i]['_id']},
                         {$set: {'uploaded': true}},
                         (err, r) => {
             assert.equal(null, err);
             assert.equal(1, r.matchedCount);
             assert.equal(1, r.modifiedCount);
           });
+
+          delete docs[i]['_id']; // strip Mongo's index from the data.
+          delete docs[i]['uploaded']; // strip uploaded field.
+
+          ref.push(docs[i]);
+
         }
       });
     });
