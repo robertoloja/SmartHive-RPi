@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+
+<HTML>
+	<HEAD>
+		<TITLE></TITLE>
+		<LINK REL='stylesheet' TYPE='text/css' HREF=''>
+        <script src="https://apis.google.com/js/platform.js" async defer></script>
+        <script src="https://www.gstatic.com/firebasejs/3.6.9/firebase.js"></script>
+	</HEAD>
+	<BODY>
+        <div id="chart" class="svg-container"></div>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/4.2.3/d3.min.js"></script>
+        <script>
+
+    var request = new XMLHttpRequest();
+    request.open("GET", "http://localhost:3000/data", false);
+    request.send(null);
+    var data = JSON.parse(request.responseText);
+
+    for (var i = 0; i < data.length; i++) {
+      delete data[i]['_id'];
+      data[i]['date'] = data[i]['date'];
+    }
+
+/*
+    xE = d3.extent(data, (d) => new Date(d.date * 1000));
+    yE = d3.extent(data, (d) => d.weight);
+    x = d3.timeScale().domain(xE);
+    y = d3.scaleLinear().domain(yE);
+    xAxis = d3.svg.axis().orient('bottom');
+    yAxis = d3.svg.axis().orient('left');
+    */
+
+    // Dataviz
+    var w = window.innerWidth;
+    var h = window.innerHeight;
+
+    var barSpacing = 5;
+
+    var chartDiv = document.getElementById("chart");
+
+function render() {
+    w = window.innerWidth;
+    h = window.innerHeight;
+
+    var xScale = d3.scaleLinear()
+                   .domain(d3.extent(data, (d) => d.date))
+                   .range([20, w - 80])
+
+    var yScale = d3.scaleLinear()
+                   .domain(d3.extent(data, (d) => d.weight))
+                   .range([h - 80, 20])
+
+    svg = d3.select(chartDiv)
+            .append("svg")
+            .attr('width', w - 40)
+            .attr('height', h - 40);
+
+    rects = svg.selectAll("rect")
+               .data(data)
+               .enter();
+
+    rects.append("rect")
+         .attr("class", "bar")
+         .attr("width", ((w - 30) / data.length) - barSpacing)
+         .attr("height", (d) => h - yScale(d.weight))
+         .attr("x", (d) => xScale(d.date))
+         .attr("y", (d) => yScale(d.weight)) // flip bars right side up
+         .attr("fill", "teal")
+         .attr("stroke", "black");
+
+    text = svg.selectAll("text")
+              .data(data)
+              .enter()
+              .append("text");
+
+    text.attr("x", (d) => xScale(d.date))
+        .attr("y", (d) => yScale(d.weight))
+        .attr("font-family", "sans-serif")
+        .attr("font-size", "11px")
+        .attr("fill", "black")
+        .text((d) => d.weight);
+}
+
+render();
+
+function reRender() {
+        svg.remove();
+        render();
+}
+
+//window.onresize = reRender;
+window.addEventListener("resize", reRender);
+//d3.select(window).on('resize', reRender);
+        </script>
+	</BODY>
+</HTML>

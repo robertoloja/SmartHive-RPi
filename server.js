@@ -30,6 +30,14 @@ app.get('/viz', function (req, res) {
   res.sendFile( __dirname + "/public/viz.html" );
 });
 
+app.get('/weightViz', (req, res) => {
+  res.sendFile( __dirname + "/public/weightViz.html" );
+});
+
+app.get('/popViz', (req, res) => {
+  res.sendFile( __dirname + "/public/populationViz.html" );
+});
+
 // Serve wifi instructions
 app.get('/wifi', function (req, res) {
   res.sendFile( __dirname + "/wifi.html" );
