@@ -14,84 +14,65 @@ var url = 'mongodb://localhost:27017/sensorData'; // MongoDB URL
 var firebaseDB;
 var app;
 
+// Apparently, it is a best practice to just keep reusing this connection
+MongoClient.connect(url, (err, mongoDB) => {
+  assert.equal(null, err);
 
-// Express server.
-app = express();
-app.use(express.static('public'));
-app.use(bodyParser.urlencoded({extended: false}));
-app.use(bodyParser.json());
+  // Express server.
+  app = express();
+  app.use(express.static('public'));
+  app.use(bodyParser.urlencoded({extended: false}));
+  app.use(bodyParser.json());
 
-// Serve index page of web client for authentication.
-app.get('/', function (req, res) {
-  res.sendFile( __dirname + "/index.html" );
-});
+  // Serve index page of web client for authentication.
+  app.get('/', function (req, res) {
+    res.sendFile( __dirname + "/index.html" );
+  });
 
-app.get('/viz', function (req, res) {
-  res.sendFile( __dirname + "/public/viz.html" );
-});
+  app.get('/viz', function (req, res) {
+    res.sendFile( __dirname + "/public/viz.html" );
+  });
 
-app.get('/weightViz', (req, res) => {
-  res.sendFile( __dirname + "/public/weightViz.html" );
-});
+  app.get('/weightViz', (req, res) => {
+    res.sendFile( __dirname + "/public/weightViz.html" );
+  });
 
-app.get('/popViz', (req, res) => {
-  res.sendFile( __dirname + "/public/populationViz.html" );
-});
+  app.get('/popViz', (req, res) => {
+    res.sendFile( __dirname + "/public/populationViz.html" );
+  });
 
-// Serve wifi instructions
-app.get('/wifi', function (req, res) {
-  res.sendFile( __dirname + "/wifi.html" );
-});
+  // Serve wifi instructions
+  app.get('/wifi', function (req, res) {
+    res.sendFile( __dirname + "/public/wifi.html" );
+  });
 
-app.get("/data",function(req,res){
-  connectToMongo(res);
-}); 
+  app.get("/data", function(req, res){
+    mongoDB.collection('data')
+          .find()
+          .toArray((err, docs) => {
+      assert.equal(null, err);
+      
+      res.json(docs);
+    });
+  }); 
 
-var server = app.listen(3000, function () {
-  var host = server.address().address
-  var port = server.address().port
-  console.log("SmartHive login server listening on port", port)
-});
+  var server = app.listen(3000, function () {
+    var host = server.address().address
+    var port = server.address().port
+    console.log("SmartHive login server listening on port", port)
+  });
 
-
-/**
- * Fingers crossed?
- */
-function connectToMongo(r) { // WHAT IS HAPPENING IN THIS FUNCTION?!?
-  MongoClient.connect(url, (err, mongoDB) => {
-    if (err) {
-      console.log("Meep?:", err);
-    } else if (mongoDB) {
-      mongoDB.collection('data')
-           .find()
-           .toArray( // docs is the array
-      (err, docs) => {
-        if (err) {
-          console.log("Collection Error:", err);
-        } else {
-          r.json(docs);
-        }
-      mongoDB.close();
-      });
-    }
-  }); // connection to mongo ended
-}
-
-
-/**
-  * hiveInfo is a Promise that will contain UID, HID and hiveName.
-  * It MUST be used by invoking its then() method, which receives a 
-  * callback that has one parameter, in this case an object containing hive 
-  * info (uid, hid, hiveName). Anything needing these values HAS to be done 
-  * from within that callback, or risk them being undefined.
-  *
-  * TODO: By the love of God, break this monstrosity up into... modules? 
-  *       ...functions? Something smaller and more reusable.
-  */
-var hiveInfo = new Promise((resolve, reject) => {
-  MongoClient.connect(url, (err, mongoDB) => {
-    assert.equal(null, err);
-
+  /**
+    * hiveInfo is a Promise that will contain UID, HID and hiveName.
+    * It MUST be used by invoking its then() method, which receives a 
+    * callback that has one parameter, in this case an object containing hive 
+    * info (uid, hid, hiveName). Anything needing these values HAS to be done 
+    * from within that callback, or risk them being undefined.
+    *
+    * TODO: By the love of God, break this monstrosity up into... modules? 
+    *       ...functions? Something smaller and more reusable.
+    */
+  var hiveInfo = new Promise((resolve, reject) => {
     // get UID from MongoDB, if it exists.
     mongoDB.collection('hiveInfo').find({'uid': /./}).toArray((err, docs) => {
       assert.equal(null, err);
@@ -116,10 +97,10 @@ var hiveInfo = new Promise((resolve, reject) => {
             'uid': req.body.uid,
             'name': req.body.name
           };
+          res.end('POST done');
           resolve(uid_and_name);
         });
       });
-
 
       if (docs['uid'] == undefined) { // UID not in MongoDB
         opn('http://localhost:3000'); // open browser
@@ -149,22 +130,17 @@ var hiveInfo = new Promise((resolve, reject) => {
       }
     });
   });
-});
 
-// This actually cashes out the Promise.
-hiveInfo.then((info) => {
-    console.log('Using UID =', info['uid'], ', HID =', info['hid']);
-});
+  // This actually cashes out the Promise.
+  hiveInfo.then((info) => {
+      console.log('Using UID =', info['uid'], ', HID =', info['hid']);
+  });
 
 
-/**
-* Read data from the MongoDB instance and write any unwritten data to Firebase.
-*/
-function getLocalSensorData() {
-  MongoClient.connect(url, (err, mongoDB) => {
-    if (err != null)
-      return;
-
+  /**
+  * Read data from the MongoDB instance and write any unwritten data to Firebase.
+  */
+  function getLocalSensorData() {
     var data = mongoDB.collection('data');
 
     data.find({'uploaded': false}).toArray((err, docs) => {
@@ -176,7 +152,7 @@ function getLocalSensorData() {
       hiveInfo.then((info) => {
         //connectToFirebase(info['uid']);
         var ref = firebaseDB.ref('users/' + info['uid'] +
-                                 '/' + info['hid'] + '/data');
+                                '/' + info['hid'] + '/data');
 
         for (var i = 0; i < docs.length; i++) {
           data.updateOne({'_id': docs[i]['_id']},
@@ -191,45 +167,44 @@ function getLocalSensorData() {
           delete docs[i]['uploaded']; // strip uploaded field.
 
           ref.push(docs[i]);
-
         }
       });
     });
-  });
-}
+  }
 
 
-/**
- * Establish user-limited connection to Firebase. Can only
- * be done once UID has been acquired.
- * @param {String} userID The Google account's Firebase UID.
- */
-function connectToFirebase(userID) {
-  admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
-    databaseURL: "https://smarthive-229a5.firebaseio.com",
-    databaseAuthVariableOverride: {
-      uid: userID
-    }
-  });
-  firebaseDB = admin.database();
-}
+  /**
+  * Establish user-limited connection to Firebase. Can only
+  * be done once UID has been acquired.
+  * @param {String} userID The Google account's Firebase UID.
+  */
+  function connectToFirebase(userID) {
+    admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount),
+      databaseURL: "https://smarthive-229a5.firebaseio.com",
+      databaseAuthVariableOverride: {
+        uid: userID
+      }
+    });
+    firebaseDB = admin.database();
+  }
 
 
-/**
-* Check internet connection.
-* @return {Boolean} true if connected, false otherwise.
-*/
-function isOnline() {
-  require('dns').resolve('www.google.com', (err) => {
-    if (err) {
-      console.log("Failed to connect.");
-      return true;
-    } else {
-      console.log("Connection acquired.");
-      return false;
-    }
-  });
-}
+  /**
+  * Check internet connection.
+  * @return {Boolean} true if connected, false otherwise.
+  */
+  function isOnline() {
+    require('dns').resolve('www.google.com', (err) => {
+      if (err) {
+        console.log("Failed to connect.");
+        return true;
+      } else {
+        console.log("Connection acquired.");
+        return false;
+      }
+    });
+  }
 
-setInterval(getLocalSensorData, 1000);
+  setInterval(getLocalSensorData, 1000);
+});

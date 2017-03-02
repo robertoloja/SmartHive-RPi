@@ -23,7 +23,8 @@
           delete data[i]['_id'];
           data[i]['date'] = data[i]['date'];
         }
-        render();
+        render(); // only do this once the GET request is over
+        window.onresize = reRender;
     }
     request.send(null);
 
@@ -32,6 +33,7 @@
     var h = window.innerHeight - 20;
     var barSpacing = 2;
     var chartDiv = document.getElementById("chart");
+    var svg;
 
 function render() {
     w = window.innerWidth;
@@ -82,8 +84,6 @@ function reRender() {
         svg.remove();
         render();
 }
-
-window.onresize = reRender;
         </script>
 	</BODY>
 </HTML>

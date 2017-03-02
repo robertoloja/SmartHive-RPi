@@ -15,75 +15,74 @@
 
     // Async GET request for data
     var request = new XMLHttpRequest();
-    request.open("GET", "http://localhost:3000/data", true);
-    request.onload = () => {
+    request.open("GET", "http://localhost:3000/data", true); // async = true
+    request.onload = () => { // thus, process in a callback
         data = JSON.parse(request.responseText);
 
         for (var i = 0; i < data.length; i++) {
           delete data[i]['_id'];
-          data[i]['date'] = data[i]['date'];
+          data[i]['date'] = data[i]['date']; // wat?
         }
-        render();
+        renderLines(); // First render once GET is finished
+        window.onresize = reRender;
     }
-    request.send(null);
+    request.send(null); // End GET request
 
     // Dataviz
-    var w = window.innerWidth - 20;
-    var h = window.innerHeight - 20;
-    var barSpacing = 2;
+    var margin = {top: 10, right: 10, bottom: 10, left: 10};
+    var w = window.innerWidth - margin.right - margin.left;
+    var h = window.innerHeight - margin.top - margin.bottom;
     var chartDiv = document.getElementById("chart");
+    var svg; // made global, so both functions can use it
 
-function render() {
-    w = window.innerWidth;
-    h = window.innerHeight;
+    function renderLines() {
+        w = window.innerWidth - margin.right - margin.left;
+        h = window.innerHeight - margin.top - margin.bottom;
 
-    var xScale = d3.scaleLinear()
-                   .domain([0, data.length])
-                   .range([0, w])
+        svg = d3.select(chartDiv)
+                .append("svg")
+                .attr('width', w)
+                .attr('height', h);
 
-    var yScale = d3.scaleLinear()
-                   .domain(d3.extent(data, (d) => d.weight))
-                   .range([h - 60, 20])
+        var xScale = d3.scaleLinear()
+                       .domain([0, data.length])
+                       .range([10, w - 10])
 
-    svg = d3.select(chartDiv)
-            .append("svg")
-            .attr('width', w - 10)
-            .attr('height', h - 40);
+        var yScale = d3.scaleLinear()
+                       .domain(d3.extent(data, (d) => d.weight))
+                       .range([h - 10, 10])
 
-    rects = svg.selectAll("rect")
-               .data(data)
-               .enter();
+        var line = d3.line()
+                     .x((d, i) => xScale(i))
+                     .y((d) => yScale(d.weight))
 
-    var barWidth = w / data.length - barSpacing * 2;
+        var lineGraph = svg.append("path")
+                           .attr("d", line(data))
+                           .attr("stroke", "blue")
+                           .attr("stroke-width", 2)
+                           .attr("fill", "none");
 
-    rects.append("rect")
-         .attr("class", "bar")
-         .attr("width", barWidth)
-         .attr("height", (d) => h - yScale(d.weight))
-         .attr("x", (d, i) => i * (barWidth + barSpacing))
-         .attr("y", (d) => yScale(d.weight)) // flip bars right side up
-         .attr("fill", "teal")
-         .attr("stroke", "black");
+        text = svg.selectAll("text")
+                  .data(data)
+                  .enter()
+                  .append("text");
 
-    text = svg.selectAll("text")
-              .data(data)
-              .enter()
-              .append("text");
+        text.attr("x", (d, i) => xScale(i))
+            .attr("y", (d) => yScale(d.weight) - 2)
+            .attr("font-family", "sans-serif")
+            .attr("font-size", "11px")
+            .attr("fill", "black")
+            .text((d) => d.weight);
 
-    text.attr("x", (d, i) => i * (barWidth + barSpacing))
-        .attr("y", (d) => yScale(d.weight) - 2)
-        .attr("font-family", "sans-serif")
-        .attr("font-size", "11px")
-        .attr("fill", "black")
-        .text((d) => d.weight);
-}
+        svg.attr('transform', 'translate(0,' + h + ')')
+           .call(d3.axisBottom(xScale));
+        //svg.call(d3.axisLeft(yScale));
+    }
 
-function reRender() {
+    function reRender() {
         svg.remove();
-        render();
-}
-
-window.onresize = reRender;
+        renderLines();
+    }
         </script>
 	</BODY>
 </HTML>
