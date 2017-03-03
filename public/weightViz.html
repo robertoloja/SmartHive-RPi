@@ -52,11 +52,15 @@
         // Set scales. These are both also functions.
         var xScale = d3.scaleLinear()
                        .domain([0, data.length - 1])
-                       .range([margin.left, w - margin.right])
+                       .range([margin.left, w - margin.right]);
 
         var yScale = d3.scaleLinear()
                        .domain(d3.extent(data, (d) => d[dKey]))
                        .range([h - margin.bottom, margin.top]);
+
+        var textScale = d3.scaleLinear()
+                          .domain([0, 10])
+                          .range([margin.top, h - margin.bottom]);
 
         // This is the function that defines the path.
         var line = d3.line()
@@ -70,13 +74,14 @@
                            .attr("stroke-width", 1)
                            .attr("fill", "none");
 
+        // clickable text
         var btnText = ['Weight', 'Population', 'Temperature', 'Humidity'];
 
         svg.append("text")
            .attr('x', 15)
-           .attr('y', 100)
+           .attr('y', textScale(4))
            .attr("font-family", "sans-serif")
-           .attr("font-size", "12px")
+           .attr("font-size", "13px")
            .style('fill', 'blue')
            .on('click', () => {
              dKey = 'weight';
@@ -87,9 +92,9 @@
 
         svg.append("text")
            .attr('x', 15)
-           .attr('y', 130)
+           .attr('y', textScale(5))
            .attr("font-family", "sans-serif")
-           .attr("font-size", "12px")
+           .attr("font-size", "13px")
            .style('fill', 'red')
            .on('click', () => {
              dKey = 'population';
@@ -100,9 +105,9 @@
 
         svg.append("text")
            .attr('x', 15)
-           .attr('y', 160)
+           .attr('y', textScale(6))
            .attr("font-family", "sans-serif")
-           .attr("font-size", "12px")
+           .attr("font-size", "13px")
            .style('fill', 'green')
            .on('click', () => {
              dKey = 'temperature';
@@ -110,20 +115,6 @@
              reRender();
            })
            .text("Temperature");
-        /*
-        buttons = svg.selectAll("text")
-                     .data(btnText)
-                     .enter()
-                     .append("text");
-
-        /* Populate it with values
-        text.attr("x", 10)
-            .attr("y", (d, i) => 40 * i)
-            .attr("font-family", "sans-serif")
-            .attr("font-size", "11px")
-            .attr("fill", "black")
-            .text(d);
-        */
 
         svg.append('g')
            .attr("transform", "translate(0," + (h - margin.bottom) + ")")
