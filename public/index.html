@@ -61,7 +61,6 @@
         if (result.credential) {
           // This gives you a Google Access Token. You can use it to access the Google API.
           var token = result.credential.accessToken;
-          console.log("OAuth token:", token);
 
           // [START_EXCLUDE]
         } else {
@@ -113,6 +112,7 @@
         request.open("POST", "/info", true);
         request.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
         request.send("uid=" + user.uid + "&name=My Hive");
+        console.log(request);
 
 
 

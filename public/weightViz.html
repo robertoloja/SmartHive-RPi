@@ -7,76 +7,131 @@
         <script src="https://apis.google.com/js/platform.js" async defer></script>
         <script src="https://www.gstatic.com/firebasejs/3.6.9/firebase.js"></script>
 	</HEAD>
-	<BODY>
+	<BODY style="margin: 0">
         <div id="chart" class="svg-container"></div>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/4.2.3/d3.min.js"></script>
         <script>
     var data;
+    var dKey = 'weight';
+    var lineColor = 'blue';
 
-    // Async GET request for data
-    var request = new XMLHttpRequest();
-    request.open("GET", "http://localhost:3000/data", true); // async = true
-    request.onload = () => { // thus, process in a callback
-        data = JSON.parse(request.responseText);
+    // Acquire data from server
+    function getData(callback) {
+      var request = new XMLHttpRequest();
+      request.open("GET", "/data", true); // async = true
+      request.onload = () => { // thus, process in a callback
+          data = JSON.parse(request.responseText);
 
-        for (var i = 0; i < data.length; i++) {
-          delete data[i]['_id'];
-          data[i]['date'] = data[i]['date']; // wat?
-        }
-        renderLines(); // First render once GET is finished
-        window.onresize = reRender;
+          for (var i = 0; i < data.length; i++) {
+            delete data[i]['_id'];
+          }
+          callback(); // First render once GET is finished
+          window.onresize = reRender;
+      }
+      request.send(null); // End GET request
     }
-    request.send(null); // End GET request
+
+    getData(renderLines);
+    setInterval(() => { getData(reRender) }, 1000);
 
     // Dataviz
-    var margin = {top: 10, right: 10, bottom: 10, left: 10};
-    var w = window.innerWidth - margin.right - margin.left;
-    var h = window.innerHeight - margin.top - margin.bottom;
+    var margin = {top: 50, right: 50, bottom: 50, left: 120};
     var chartDiv = document.getElementById("chart");
     var svg; // made global, so both functions can use it
 
     function renderLines() {
-        w = window.innerWidth - margin.right - margin.left;
-        h = window.innerHeight - margin.top - margin.bottom;
+        var w = window.innerWidth;
+        var h = window.innerHeight;
 
+        // select host svg element
         svg = d3.select(chartDiv)
                 .append("svg")
-                .attr('width', w)
-                .attr('height', h);
+                .attr('width', w - margin.right + 10)
+                .attr('height', h - margin.bottom + 20)
 
+        // Set scales. These are both also functions.
         var xScale = d3.scaleLinear()
-                       .domain([0, data.length])
-                       .range([10, w - 10])
+                       .domain([0, data.length - 1])
+                       .range([margin.left, w - margin.right])
 
         var yScale = d3.scaleLinear()
-                       .domain(d3.extent(data, (d) => d.weight))
-                       .range([h - 10, 10])
+                       .domain(d3.extent(data, (d) => d[dKey]))
+                       .range([h - margin.bottom, margin.top]);
 
+        // This is the function that defines the path.
         var line = d3.line()
-                     .x((d, i) => xScale(i))
-                     .y((d) => yScale(d.weight))
+                     .x((d, i) => xScale(i)) // foreach d in data; i is index
+                     .y((d) => yScale(d[dKey])) // i is optional in callback
 
+        // Create the path
         var lineGraph = svg.append("path")
                            .attr("d", line(data))
-                           .attr("stroke", "blue")
-                           .attr("stroke-width", 2)
+                           .attr("stroke", lineColor)
+                           .attr("stroke-width", 1)
                            .attr("fill", "none");
 
-        text = svg.selectAll("text")
-                  .data(data)
-                  .enter()
-                  .append("text");
+        var btnText = ['Weight', 'Population', 'Temperature', 'Humidity'];
 
-        text.attr("x", (d, i) => xScale(i))
-            .attr("y", (d) => yScale(d.weight) - 2)
+        svg.append("text")
+           .attr('x', 15)
+           .attr('y', 100)
+           .attr("font-family", "sans-serif")
+           .attr("font-size", "12px")
+           .style('fill', 'blue')
+           .on('click', () => {
+             dKey = 'weight';
+             lineColor = 'blue';
+             reRender();
+           })
+           .text("Weight");
+
+        svg.append("text")
+           .attr('x', 15)
+           .attr('y', 130)
+           .attr("font-family", "sans-serif")
+           .attr("font-size", "12px")
+           .style('fill', 'red')
+           .on('click', () => {
+             dKey = 'population';
+             lineColor = 'red';
+             reRender();
+           })
+           .text("Population");
+
+        svg.append("text")
+           .attr('x', 15)
+           .attr('y', 160)
+           .attr("font-family", "sans-serif")
+           .attr("font-size", "12px")
+           .style('fill', 'green')
+           .on('click', () => {
+             dKey = 'temperature';
+             lineColor = 'green';
+             reRender();
+           })
+           .text("Temperature");
+        /*
+        buttons = svg.selectAll("text")
+                     .data(btnText)
+                     .enter()
+                     .append("text");
+
+        /* Populate it with values
+        text.attr("x", 10)
+            .attr("y", (d, i) => 40 * i)
             .attr("font-family", "sans-serif")
             .attr("font-size", "11px")
             .attr("fill", "black")
-            .text((d) => d.weight);
+            .text(d);
+        */
 
-        svg.attr('transform', 'translate(0,' + h + ')')
+        svg.append('g')
+           .attr("transform", "translate(0," + (h - margin.bottom) + ")")
            .call(d3.axisBottom(xScale));
-        //svg.call(d3.axisLeft(yScale));
+
+        svg.append('g')
+           .attr("transform", "translate(" + margin.left + ",0)")
+           .call(d3.axisLeft(yScale))
     }
 
     function reRender() {
