@@ -14,34 +14,38 @@
     var data;
     var dKey = 'weight';
     var lineColor = 'blue';
+    var xScale;
+    var yScale;
+    var line;
 
     // Acquire data from server
     function getData(callback) {
-      var request = new XMLHttpRequest();
-      request.open("GET", "/data", true); // async = true
-      request.onload = () => { // thus, process in a callback
-          data = JSON.parse(request.responseText);
+        var request = new XMLHttpRequest();
+        request.open("GET", "/data", true); // async = true
+        request.onload = () => { // thus, process in a callback
+            data = JSON.parse(request.responseText);
 
-          for (var i = 0; i < data.length; i++) {
+            for (var i = 0; i < data.length; i++) {
             delete data[i]['_id'];
-          }
-          callback(); // First render once GET is finished
-          window.onresize = reRender;
-      }
-      request.send(null); // End GET request
+            }
+            callback(); // First render once GET is finished
+            window.onresize = reRender;
+        }
+        request.send(null); // End GET request
     }
 
     getData(renderLines);
-    setInterval(() => { getData(reRender) }, 1000);
 
     // Dataviz
     var margin = {top: 50, right: 50, bottom: 50, left: 120};
     var chartDiv = document.getElementById("chart");
+    var w = window.innerWidth;
+    var h = window.innerHeight;
     var svg; // made global, so both functions can use it
 
     function renderLines() {
-        var w = window.innerWidth;
-        var h = window.innerHeight;
+        w = window.innerWidth;
+        h = window.innerHeight;
 
         // select host svg element
         svg = d3.select(chartDiv)
@@ -50,11 +54,11 @@
                 .attr('height', h - margin.bottom + 20)
 
         // Set scales. These are both also functions.
-        var xScale = d3.scaleLinear()
-                       .domain([0, data.length - 1])
-                       .range([margin.left, w - margin.right]);
+        xScale = d3.scaleLinear()
+                   .domain([0, data.length - 1])
+                   .range([margin.left, w - margin.right]);
 
-        var yScale = d3.scaleLinear()
+        yScale = d3.scaleLinear()
                        .domain(d3.extent(data, (d) => d[dKey]))
                        .range([h - margin.bottom, margin.top]);
 
@@ -63,12 +67,13 @@
                           .range([margin.top, h - margin.bottom]);
 
         // This is the function that defines the path.
-        var line = d3.line()
+        line = d3.line()
                      .x((d, i) => xScale(i)) // foreach d in data; i is index
                      .y((d) => yScale(d[dKey])) // i is optional in callback
 
         // Create the path
         var lineGraph = svg.append("path")
+                           .attr("class", "line")
                            .attr("d", line(data))
                            .attr("stroke", lineColor)
                            .attr("stroke-width", 1)
@@ -86,7 +91,7 @@
            .on('click', () => {
              dKey = 'weight';
              lineColor = 'blue';
-             reRender();
+             updateData();
            })
            .text("Weight");
 
@@ -99,7 +104,7 @@
            .on('click', () => {
              dKey = 'population';
              lineColor = 'red';
-             reRender();
+             updateData();
            })
            .text("Population");
 
@@ -112,18 +117,43 @@
            .on('click', () => {
              dKey = 'temperature';
              lineColor = 'green';
-             reRender();
+             updateData();
            })
            .text("Temperature");
 
         svg.append('g')
+           .attr("class", "xAxis")
            .attr("transform", "translate(0," + (h - margin.bottom) + ")")
            .call(d3.axisBottom(xScale));
 
         svg.append('g')
+           .attr("class", "yAxis")
            .attr("transform", "translate(" + margin.left + ",0)")
-           .call(d3.axisLeft(yScale))
+           .call(d3.axisLeft(yScale));
     }
+
+    // Do the data update in the proper way
+    function updateData() {
+        xScale.domain([0, data.length - 1]);
+        yScale.domain(d3.extent(data, (d) => d[dKey]));
+
+        var svg = d3.select(chartDiv).transition();
+        svg.select(".line")
+           .duration(200)
+           .attr("stroke", lineColor)
+           .attr("d", line(data));
+
+        svg.select(".xAxis")
+           .duration(1)
+           .call(d3.axisBottom(xScale));
+
+        svg.select(".yAxis")
+           .duration(1)
+           .call(d3.axisLeft(yScale));
+    }
+
+    setInterval(() => { getData(updateData) }, 1000);
+
 
     function reRender() {
         svg.remove();
