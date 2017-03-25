@@ -6,6 +6,11 @@
 		<LINK REL='stylesheet' TYPE='text/css' HREF=''>
         <script src="https://apis.google.com/js/platform.js" async defer></script>
         <script src="https://www.gstatic.com/firebasejs/3.6.9/firebase.js"></script>
+<style>
+.clickableText {
+  cursor: pointer;
+}
+</style>
 	</HEAD>
 	<BODY style="margin: 0">
         <div id="chart" class="svg-container"></div>
@@ -76,17 +81,15 @@
                            .attr("class", "line")
                            .attr("d", line(data))
                            .attr("stroke", lineColor)
-                           .attr("stroke-width", 1)
+                           .attr("stroke-width", 2)
                            .attr("fill", "none");
-
-        // clickable text
-        var btnText = ['Weight', 'Population', 'Temperature', 'Humidity'];
 
         svg.append("text")
            .attr('x', 15)
            .attr('y', textScale(4))
            .attr("font-family", "sans-serif")
            .attr("font-size", "13px")
+           .attr('class', 'clickableText')
            .style('fill', 'blue')
            .on('click', () => {
              dKey = 'weight';
@@ -100,6 +103,7 @@
            .attr('y', textScale(5))
            .attr("font-family", "sans-serif")
            .attr("font-size", "13px")
+           .attr('class', 'clickableText')
            .style('fill', 'red')
            .on('click', () => {
              dKey = 'population';
@@ -113,6 +117,7 @@
            .attr('y', textScale(6))
            .attr("font-family", "sans-serif")
            .attr("font-size", "13px")
+           .attr('class', 'clickableText')
            .style('fill', 'green')
            .on('click', () => {
              dKey = 'temperature';
