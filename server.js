@@ -198,10 +198,10 @@ MongoClient.connect(url, (err, mongoDB) => {
     require('dns').resolve('www.google.com', (err) => {
       if (err) {
         console.log("Failed to connect.");
-        return true;
+        return false;
       } else {
         console.log("Connection acquired.");
-        return false;
+        return true;
       }
     });
   }
